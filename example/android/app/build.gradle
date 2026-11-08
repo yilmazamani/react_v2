@@ -288,7 +288,7 @@ dependencies {
         exclude group:'com.facebook.flipper'
     }
 
-    implementation 'ai.amani.android:AmaniAi:3.23.1'
+    implementation 'ai.amani.android:AmaniAi:3.0.4'
 
     if (enableHermes) {
         //noinspection GradleDynamicVersion
