@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
-import type { ValueOf } from '../utils/types';
+import type { NviModel, ValueOf } from '../utils/types';
 import { WrongPlatformError } from '../utils';
+import { generateNviData } from '../utils/mrz';
 
 export type IDSideType = {
   front: number;
@@ -43,12 +44,33 @@ export class IDCaptureHelper {
    * @throws {WrongPlatformError}
    * @returns {Promise<boolean>} if the capture is success or not.
    */
-  public startNFCCaptureOnIOS(): Promise<boolean> {
+  public startNFCCaptureOnIOS(nvi: NviModel): Promise<boolean> {
     if (Platform.OS !== 'ios') {
       throw new WrongPlatformError('startNFCCaptureOnIOS()', 'iOS');
     }
 
-    return this.platformModule.startNFCCaptureOnIOS();
+    console.log("startNFCCaptureOnIOS (SRC TS) called with:", nvi);
+    return this.platformModule.idCaptureIOSStartNFC(nvi);
+  }
+
+  /**
+   * Starts the NFC capture process using raw data.
+   * Internal MRZ check digits are calculated automatically.
+   *
+   * **Note:** this function runs only on iOS 13.0 or later.
+   * @platform iOS 13.0 later.
+   * @param docNo The ID's document number.
+   * @param birthDate The ID holder's date of birth (YYMMDD).
+   * @param expiryDate The ID's expiry date (YYMMDD).
+   * @returns {Promise<boolean>} if the capture is success or not.
+   */
+  public startNFCCaptureWithRawData(
+    docNo: string,
+    birthDate: string,
+    expiryDate: string
+  ): Promise<boolean> {
+    const nvi = generateNviData(docNo, birthDate, expiryDate);
+    return this.startNFCCaptureOnIOS(nvi);
   }
 
   /**
@@ -85,7 +107,17 @@ export class IDCaptureHelper {
    */
   public async start(side: ValueOf<IDSideType>): Promise<string> {
     console.log(side);
-    let imageData = await this.platformModule.idCaptureStart({ side });
+    // Fixed: Native module expects 'side' key, not 'stepId'
+    let imageData = await this.platformModule.idCaptureStart({ side: side });
     return `data:image/jpeg;base64,${imageData}`;
+  }
+
+  /**
+   * Gets the MRZ document ID from the backend.
+   * This should be called after document upload.
+   * @returns {Promise<string>} The document ID.
+   */
+  public getMRZ(): Promise<string> {
+    return this.platformModule.idCaptureGetMRZ();
   }
 }

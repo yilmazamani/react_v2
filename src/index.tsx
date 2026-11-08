@@ -20,13 +20,13 @@ const LINKING_ERROR =
 const AmaniSdk = NativeModules.AmaniSdk
   ? NativeModules.AmaniSdk
   : new Proxy(
-      {},
-      {
-        get() {
-          throw new Error(LINKING_ERROR);
-        },
-      }
-    );
+    {},
+    {
+      get() {
+        throw new Error(LINKING_ERROR);
+      },
+    }
+  );
 
 export class AmaniSDK {
   private static _instance: AmaniSDK;
@@ -34,7 +34,7 @@ export class AmaniSDK {
   private eventEmitter = new NativeEventEmitter(this.platformModule);
 
   // Locking constructor for singleton usage
-  private constructor() {}
+  private constructor() { }
 
   /** Singleton instance of the SDK. */
   public static get sharedInstance() {
@@ -109,8 +109,8 @@ export class AmaniSDK {
     if (this._isInitialized === false) {
       console.warn(
         "[AmaniSDK] The SDK isn't initialized." +
-          'Use AmaniSDK.sharedInstance.initAmani before calling' +
-          'any other function on your apps index.js file.'
+        'Use AmaniSDK.sharedInstance.initAmani before calling' +
+        'any other function on your apps index.js file.'
       );
     }
     return this._isInitialized;
@@ -142,8 +142,16 @@ export class AmaniSDK {
   public setDelegate(delegateEvents: DelegateEvents) {
     let onErrorListener = this.eventEmitter.addListener(
       'onError',
-      (params: { type: string; erorrs: Record<string, any> }) => {
-        delegateEvents.onError(params.type, params.erorrs);
+      (params: any) => {
+        let errorParams = params;
+        if (typeof params === 'string') {
+          try {
+            errorParams = JSON.parse(params);
+          } catch (e) {
+            console.error('Failed to parse error params', e);
+          }
+        }
+        delegateEvents.onError(errorParams.type, errorParams.errors);
       }
     );
 
@@ -163,10 +171,29 @@ export class AmaniSDK {
       }
     );
 
+    let onMRZCapturedListener = this.eventEmitter.addListener(
+      'onMRZCaptured',
+      (body) => {
+        let parsedBody = body;
+        if (typeof body === 'string') {
+          try {
+            parsedBody = JSON.parse(body);
+          } catch (e) {
+            console.error("Failed to parse MRZ body", e);
+          }
+        }
+        // The mrz model comes from iOS but we need to map it or use it as NviModel
+        // The MRZ model from iOS might have slightly different keys or we can just pass it if it matches
+        // For now let's pass it directly as NviModel
+        delegateEvents.onMRZCaptured(parsedBody);
+      }
+    );
+
     return () => {
       onErrorListener.remove();
       onProfileListener.remove();
       onStepResultListener.remove();
+      onMRZCapturedListener.remove();
     };
   }
 }

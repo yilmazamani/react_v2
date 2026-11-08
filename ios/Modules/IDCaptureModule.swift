@@ -35,10 +35,16 @@ class IdCaptureModule {
   }
   
   @available(iOS 13, *)
-  public func startNFC(resolve: @escaping RCTPromiseResolveBlock, rejecter reject: RCTPromiseRejectBlock) {
-    
-    module.startNFC { done in
-      resolve(done)
+  public func startNFC(nvi: NviModel, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    Task { @MainActor in
+      do {
+        print("Debugging NVI in Swift: DocumentNo: \(String(describing: nvi.documentNo)) Birth: \(String(describing: nvi.dateOfBirth)) Expire: \(String(describing: nvi.dateOfExpire))")
+        print("Debugging NVI CDs: DocCD: \(String(describing: nvi.documentNoCD)) BirthCD: \(String(describing: nvi.dateOfBirthCD)) ExpireCD: \(String(describing: nvi.dateOfExpireCD))")
+        let done = await module.startNFC(nvi: nvi)
+        resolve(done)
+      } catch {
+         reject("AmaniSDK-IdCapture", error.localizedDescription, nil)
+      }
     }
   }
   
@@ -52,6 +58,11 @@ class IdCaptureModule {
       resolve(isSuccess)
     }
   }
-  
+
+  public func getMrz(resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    module.getMrz { (documentID) in
+      resolve(documentID)
+    }
+  }
 }
 
